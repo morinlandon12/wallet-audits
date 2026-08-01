@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hardware Wallet Security Review — Trezor Safe 7 · BitBox02 · Model One (Aug 2026)</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#ffffff; --ink:#1b2430; --muted:#5b6572; --line:#e3e7ec;
+    --accent:#0b5fff; --code-bg:#0f1722; --code-ink:#dbe4f0;
+    --confirmed:#b42318; --confirmed-bg:#fdecea;
+    --partial:#b54708;  --partial-bg:#fdf3e7;
+    --refuted:#067647;  --refuted-bg:#e9f7ef;
+    --info:#175cd3;     --info-bg:#eaf1fe;
+    --sev-high:#b42318; --sev-med:#b54708; --sev-low:#175cd3; --sev-info:#475467;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:15px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  code,kbd{font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  header{background:#0f1722;color:#eef2f7;padding:44px 24px 36px}
+  header .wrap{max-width:1020px;margin:0 auto}
+  header h1{margin:0 0 8px;font-size:26px;letter-spacing:.2px}
+  header p{margin:4px 0;color:#aab6c5}
+  header .meta{margin-top:14px;font-size:13px;color:#8fa0b3}
+  header .meta b{color:#dbe4f0;font-weight:600}
+  .wrap{max-width:1020px;margin:0 auto;padding:0 24px}
+  nav.toc{background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+  nav.toc .wrap{display:flex;flex-wrap:wrap;gap:4px 18px;padding-top:10px;padding-bottom:10px;font-size:13.5px}
+  nav.toc a{color:var(--accent);text-decoration:none;white-space:nowrap}
+  nav.toc a:hover{text-decoration:underline}
+  section{background:var(--card);border:1px solid var(--line);border-radius:10px;
+          padding:26px 30px;margin:26px 0}
+  h2{font-size:21px;margin:0 0 14px;padding-top:6px;border-top:0}
+  h3{font-size:17px;margin:26px 0 8px}
+  h4{font-size:15px;margin:18px 0 6px}
+  p{margin:8px 0}
+  ul,ol{margin:8px 0 8px 4px;padding-left:22px}
+  li{margin:4px 0}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:#f0f3f7;font-weight:600}
+  tr:nth-child(even) td{background:#fafbfc}
+  .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700;
+         letter-spacing:.4px;text-transform:uppercase;white-space:nowrap}
+  .v-confirmed{background:var(--confirmed-bg);color:var(--confirmed)}
+  .v-partial{background:var(--partial-bg);color:var(--partial)}
+  .v-refuted{background:var(--refuted-bg);color:var(--refuted)}
+  .v-info{background:var(--info-bg);color:var(--info)}
+  .sev{display:inline-block;padding:1px 8px;border-radius:4px;font-size:11.5px;font-weight:700;white-space:nowrap}
+  .sev-high{background:#fdecea;color:var(--sev-high)}
+  .sev-med{background:#fdf3e7;color:var(--sev-med)}
+  .sev-low{background:#eaf1fe;color:var(--sev-low)}
+  .sev-info{background:#eef1f5;color:var(--sev-info)}
+  .ev{font-size:12.5px;color:var(--muted)}
+  .ev code{color:#344054;background:#f2f4f7;padding:1px 5px;border-radius:4px;font-size:12px}
+  pre{background:var(--code-bg);color:var(--code-ink);padding:14px 16px;border-radius:8px;
+      overflow-x:auto;font-size:12.5px;line-height:1.55;margin:12px 0}
+  pre .c{color:#7d8ba0}
+  .callout{border-left:4px solid var(--accent);background:#f4f8ff;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0}
+  .callout.warn{border-color:var(--partial);background:#fdf8f0}
+  .callout.crit{border-color:var(--confirmed);background:#fdf1ef}
+  .callout.good{border-color:var(--refuted);background:#f0faf4}
+  .callout p:first-child{margin-top:0}.callout p:last-child{margin-bottom:0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  @media(max-width:820px){.grid2{grid-template-columns:1fr}}
+  .small{font-size:13px;color:var(--muted)}
+  footer{color:var(--muted);font-size:12.5px;padding:10px 0 50px;text-align:center}
+  .kbd-legend{font-size:12.5px;color:var(--muted);margin-bottom:6px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>Hardware Wallet Security Review</h1>
+    <p>Entropy generation &amp; self-custody assessment — <b style="color:#fff">Trezor Safe 7</b> (T3W1) and <b style="color:#fff">BitBox02 / BitBox02 Nova</b>, audited against the July 2026 Coldcard entropy-bug class; plus hypothesis-driven vulnerability scan and a Trezor Model One multisig assessment.</p>
+    <div class="meta">
+      <b>Date:</b> 1 August 2026 &nbsp;·&nbsp;
+      <b>Scope:</b> trezor/trezor-firmware @ <code>ded1c14</code> (main) · BitBoxSwiss/bitbox02-firmware @ <code>c838d7f</code> (master) &nbsp;·&nbsp;
+      <b>Method:</b> source review (agent-assisted mapping + manual verification of all decisive code paths)
+    </div>
+  </div>
+</header>
+
+<nav class="toc"><div class="wrap">
+  <a href="#exec">Executive summary</a>
+  <a href="#baseline">1 · Coldcard baseline</a>
+  <a href="#entropy">2 · Entropy review</a>
+  <a href="#hypotheses">3 · Hypothesis scan H1–H9</a>
+  <a href="#surfaces">4 · Additional surfaces</a>
+  <a href="#modelone">5 · Model One in multisig</a>
+  <a href="#recs">6 · Recommendations</a>
+  <a href="#limits">7 · Scope &amp; limitations</a>
+  <a href="#appendix">Appendix · evidence index</a>
+</div></nav>
+
+<div class="wrap">
+
+<!-- ============================= EXEC SUMMARY ============================= -->
+<section id="exec">
+  <h2>Executive summary</h2>
+  <p>This review was triggered by the <b>Coldcard seed-generation failure</b> (Coinkite advisory, 30–31 July 2026): a 2021 refactor silently bound seed generation to MicroPython's <i>software</i> PRNG instead of the hardware RNG — the two functions shared a name, the build picked the wrong one, and nothing runtime-checked the result. Mk3 seeds carried ≈40 bits of entropy; ≈594 BTC was swept from ≈500 wallets. We audited Trezor Safe 7 and BitBox02 for the same bug class and for the wider set of custody-breaking risks.</p>
+
+  <div class="callout good">
+    <p><b>Headline verdict: neither device carries the Coldcard bug, and both are structurally immune to it.</b>
+    Seed entropy on both devices XOR-combines multiple physically independent sources, so no single failed or mis-linked source can determine the seed; all hard-failure paths fail closed (hang/exception/abort), never degrade silently. The Trezor same-symbol weak/strong RNG pattern that doomed Coldcard <i>exists in Trezor's tree</i> but is fenced by four independent build-time guards; BitBox02's fake/real RNG swap is structurally impossible to mis-link.</p>
+  </div>
+
+  <h3>Most significant findings (ranked)</h3>
+  <table>
+    <tr><th style="width:34px">#</th><th>Finding</th><th style="width:120px">Device</th><th style="width:120px">Severity</th></tr>
+    <tr>
+      <td>1</td>
+      <td><b>Plaintext microSD backup.</b> The SD backup is the seed, in cleartext (<code>backup.rs:219</code>, <code>BackupMode::Plaintext</code>); restore requires only a <i>new</i> password, never the original (<code>restore.rs:58-61</code>). Card alone = funds. Deliberate design, but the largest practical exposure found.</td>
+      <td>BitBox02</td><td><span class="sev sev-high">High</span></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><b>No anti-exfiltration signing protocol &amp; no verify-after-sign.</b> Deterministic RFC6979 nonces everywhere; BIP340 aux_rand is NULL (zeros); a fault- or malware-crafted signature is returned unchecked. Dark Skippy-class key exfiltration is gated only by supply-chain integrity.</td>
+      <td>Trezor (all models)</td><td><span class="sev sev-med">Medium</span></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><b>Taproot/Schnorr anti-klepto gap.</b> Anti-klepto is real on ECDSA paths but explicitly unimplemented for Schnorr (<code>signtx.rs:1210</code>: "Anti-Klepto protocol not supported yet"); and optional everywhere (zero-nonce backwards-compat fallback).</td>
+      <td>BitBox02</td><td><span class="sev sev-med">Medium</span></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><b>Zero RNG health testing anywhere</b> — no repetition/constant-output/all-zero checks on SAMD51 TRNG, ATECC608B (the Coldcard-erratum chip family), or Optiga; no startup known-answer tests. Detection is purely architectural (mixing), never active.</td>
+      <td>BitBox02</td><td><span class="sev sev-med">Medium</span></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><b>No runtime health test on secure-element entropy</b> — MCU TRNG has the FIPS continuous test, but Optiga/TROPIC01 output is trusted unchecked (all-zero/repeat checks exist only as factory prodtest commands, Tropic only).</td>
+      <td>Trezor Safe 7</td><td><span class="sev sev-med">Medium</span></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td><b>ETH blind signing persists on both</b> for unrecognized calldata — drainer-relevant calls (<code>setApprovalForAll</code>, <code>permit</code>, Permit2) get no meaningful on-device decoding (Trezor: skippable raw hex + hash; BitBox02: raw hex truncated to ~321 chars, only ERC-20 <code>transfer</code> decoded).</td>
+      <td>Both</td><td><span class="sev sev-med">Medium</span></td>
+    </tr>
+  </table>
+
+  <p class="small">Also corrected during this review: an initial assessment of "no anti-rollback on either device" was <b>wrong</b> — both implement hard monotonic downgrade protection (details in <a href="#h1">H1</a>).</p>
+</section>
+
+<!-- ============================= 1 BASELINE ============================= -->
+<section id="baseline">
+  <h2>1 · The Coldcard baseline: five failure modes</h2>
+  <p>Per Coinkite's advisory and incident reporting (July 2026): during the 2021 migration to Bitcoin Core's libsecp256k1, Coldcard's seed generation began calling MicroPython's software PRNG instead of the hardware RNG — <b>both functions had the same name</b>, and the build silently selected the wrong implementation. Wallets displayed perfectly valid 24-word phrases. Mk3 (single source): ≈40-bit effective entropy. Mk4/Mk5/Q: ≈72 bits, saved from total collapse only because their two secure elements still contributed. Fixes shipped in Mk3 4.2.0+, Mk4/Mk5 5.6.0+, Q 1.5.0Q+ — but already-generated seeds are permanently weak; users must migrate.</p>
+  <table>
+    <tr><th style="width:40px">FM</th><th>Failure mode</th><th>Audit question for Trezor / BitBox02</th></tr>
+    <tr><td>FM1</td><td>Same-symbol weak/strong RNG → silent wrong binding at link time</td><td>Can a weak PRNG object/module silently replace the strong one in a production build?</td></tr>
+    <tr><td>FM2</td><td>No runtime health test on entropy sources</td><td>Would a stuck/constant/degraded TRNG be detected at runtime?</td></tr>
+    <tr><td>FM3</td><td>Single-source dependency (no defense-in-depth mixing)</td><td>Can one source's failure determine the seed?</td></tr>
+    <tr><td>FM4</td><td>Failure paths continue with degraded entropy</td><td>Does any error path fall back to weaker randomness instead of halting?</td></tr>
+    <tr><td>FM5</td><td>No verification that external entropy was honestly incorporated</td><td>Can the host verify the device mixed in contributed entropy?</td></tr>
+  </table>
+</section>
+
+<!-- ============================= 2 ENTROPY ============================= -->
+<section id="entropy">
+  <h2>2 · Entropy architecture review</h2>
+
+  <h3>2.1 Trezor Safe 7 (T3W1 — STM32U5 + Optiga Trust M + TROPIC01)</h3>
+  <p><b>Seed entropy flow:</b> <code>reset_device/__init__.py:88</code> → <code>random.bytes(32, strong=True)</code> → <code>rng_fill_buffer_strong()</code> → per-32-byte-block <b>XOR of STM32 TRNG ⊕ Optiga ⊕ TROPIC01</b> (<code>core/embed/sec/rng/rng_strong.c:38-72</code>) → <code>SHA256(int_entropy ‖ host_ext_entropy)</code> under an HMAC commitment, with an optional host-driven entropy-check protocol that re-derives xpubs to prove honest mixing (<code>reset_device/__init__.py:92-105, 343-356</code>).</p>
+  <pre>bool rng_fill_buffer_strong(void* buffer, size_t buffer_size) {
+  rng_fill_buffer(buffer, buffer_size);          <span class="c">// MCU TRNG first</span>
+  ...
+  while (remaining &gt; 0) {
+    if (!optiga_random_buffer(block, block_size)) { return false; }  <span class="c">// fail closed</span>
+    for (i...) dst[i] ^= block[i];
+    if (!tropic_random_buffer(block, block_size)) { return false; }  <span class="c">// fail closed</span>
+    for (i...) dst[i] ^= block[i];
+  }
+  return true;
+}</pre>
+  <table>
+    <tr><th style="width:36px">ID</th><th>Finding</th><th style="width:110px">Severity</th></tr>
+    <tr><td>T1</td><td><b>Coldcard pattern exists but quadruply guarded.</b> Weak LCG <code>random_buffer</code> (<code>crypto/rand_insecure.c:42</code>) shares its symbol with the strong one (<code>sys/rng/stm32/rng.c:85</code>). Guards: ① weak body is <code>#ifdef USE_INSECURE_PRNG</code>-gated (miscompile → undefined-symbol link error, loud); ② device SCons builds never compile it; ③ <code>core/embed/crypto/build.rs:198-203</code> hard-bails on <code>insecure_prng</code>+production; ④ dual linkage → duplicate-symbol error. Historical fix #2899 ("insecure PRNG opt-in, not opt-out"). <code>MICROPY_PY_URANDOM=0</code> removes the ambiguous Python-layer name entirely.</td><td><span class="sev sev-info">Info</span></td></tr>
+    <tr><td>T2</td><td><b>No runtime health test on SE outputs.</b> MCU TRNG has the FIPS continuous (repeat-value) test inline and fail-stops on error bits (+IWDG) (<code>rng.c:40-64</code>). Optiga/TROPIC01 randomness is trusted unchecked at runtime; all-zero/repeat detection exists only as factory prodtest commands for Tropic (<code>prodtest_tropic.c:2206-2256</code>) — none for Optiga; no startup known-answer test. A systematic SE/driver bug returning constants would be invisible while the other two sources hold.</td><td><span class="sev sev-med">Medium</span></td></tr>
+    <tr><td>T3</td><td><b>Single-source randomness for ML-DSA attestation signing</b> (<code>mcu_attestation.c:79</code>): signature randomness from raw MCU TRNG, not the mixed path — inconsistent with the device's own seed policy; weak signing randomness is a classic key-leak vector.</td><td><span class="sev sev-low">Low</span></td></tr>
+    <tr><td>T4</td><td><code>rng_fill_buffer_strong</code> silently degrades to TRNG-only if built without <code>USE_OPTIGA</code>/<code>USE_TROPIC</code> (<code>rng_strong.c:74-79</code>). All T3W1 boards define both, so Safe 7 is unaffected — the API name overstates its guarantee on such builds.</td><td><span class="sev sev-info">Info</span></td></tr>
+    <tr><td>T5</td><td>Context: June 2026 TROPIC01 disclosure (Ledger Donjon) was a <b>laser fault-injection</b> issue — physical, not entropy — neutralized by the layered design validated here. <code>vendor/libtropic</code> is an uninitialized submodule; SE-internal TRNG handling was not auditable in-tree.</td><td><span class="sev sev-info">Info</span></td></tr>
+  </table>
+
+  <h3>2.2 BitBox02 (SAMD51 + ATECC608B; Nova: SAMD51 + Optiga Trust M V3)</h3>
+  <p><b>Seed entropy flow</b> (<code>keystore.rs:577-608</code>):</p>
+  <pre>seed = SHA256(MCU_TRNG ⊕ SecureChip_TRNG ⊕ FactoryRandom)[:n]   <span class="c">// bitbox-core-utils/src/random.rs:9-30</span>
+     ⊕ HostEntropy[:n]                                            <span class="c">// mandatory, 16/32 B — set_password.rs:23-25</span>
+     ⊕ SHA256(salt ‖ "keystore_seed_generation" ‖ password)[:n]</pre>
+  <p>Five independent contributions; host entropy XORed post-hash so it can only add entropy; seed stored AES-256-CBC+HMAC under a secure-chip-stretched key, <b>read back and verified after write</b> (<code>keystore.rs:354-367</code>), BIP39 seed derived twice and compared at unlock (fault check, <code>keystore.rs:534-542</code>).</p>
+  <table>
+    <tr><th style="width:36px">ID</th><th>Finding</th><th style="width:110px">Severity</th></tr>
+    <tr><td>B1</td><td><b>Zero runtime health testing, on any source.</b> SAMD51 TRNG busy-polls DATARDY, no repetition/all-zero checks, no error path (<code>hpl_trng.c:100-109</code>). ATECC608B randomness gets 5 retries against <i>errors</i> (<code>atecc.c:684-694</code>) but a <b>constant-but-responsive TRNG is never detected</b> — notable because the original BitBox02 ships the same ATECC608B family named in the Microchip TRNG erratum behind earlier Coldcard concerns. SHA-256 postconditioning is the only conditioning.</td><td><span class="sev sev-med">Medium</span></td></tr>
+    <tr><td>B2</td><td><b>No same-symbol hazard.</b> Test fakes are Rust <code>cfg_attr(path=…)</code> module swaps (both files can never coexist); <code>-DTESTING</code> impossible in cross-compiled firmware (<code>bitbox02-sys/build.rs:336-340</code> keys on the <code>thumb</code> target); production Cargo features exclude fakes. Closest hazard: feature-flag misuse pulling in <code>imp_fake.rs</code> (all-zero secure-chip RNG) — no runtime tripwire, but release configs can't contain it.</td><td><span class="sev sev-info">Info</span></td></tr>
+    <tr><td>B3</td><td><b>Noise static key from MCU TRNG only</b> (<code>bitbox-noise/src/x25519.rs:22</code>): the device's long-term Noise identity key (authenticates the encrypted host channel) uses a single source, no mixing, no health test. Not seed material, but a degraded TRNG would weaken channel authentication.</td><td><span class="sev sev-low">Low</span></td></tr>
+    <tr><td>B4</td><td><b>Silent secure-chip backend fallback</b> (<code>imp.rs:115</code>): chip-type detection failure silently defaults to the ATECC driver. Likely fails safe at boot (setup → Abort), but the fallback itself is silent — the shape this bug class thrives on.</td><td><span class="sev sev-low">Low</span></td></tr>
+    <tr><td>B5</td><td>Next-gen <code>bitbox03</code> crate <code>random</code> is <code>todo!()</code> — unaudited future surface. Good hygiene noted: host-facing RandomNumber API removed in v9.7.0.</td><td><span class="sev sev-info">Info</span></td></tr>
+  </table>
+
+  <h3>2.3 Head-to-head vs. the Coldcard failure modes</h3>
+  <table>
+    <tr><th>Coldcard failure mode</th><th>Trezor Safe 7</th><th>BitBox02</th></tr>
+    <tr><td>FM1 · same-name weak/strong RNG silently linked</td><td><span class="badge v-refuted">Guarded</span> pattern exists; 4 independent build guards</td><td><span class="badge v-refuted">Absent</span> structurally impossible (cfg swap + target check)</td></tr>
+    <tr><td>FM2 · runtime entropy health tests</td><td><span class="badge v-partial">Partial</span> FIPS continuous on MCU TRNG only; none on SEs</td><td><span class="badge v-confirmed">None</span> none anywhere — weakest point</td></tr>
+    <tr><td>FM3 · single-source seed dependency</td><td><span class="badge v-refuted">No</span> TRNG ⊕ Optiga ⊕ TROPIC01 ⊕ host</td><td><span class="badge v-refuted">No</span> 5-source mix incl. mandatory host entropy</td></tr>
+    <tr><td>FM4 · continues on RNG failure</td><td><span class="badge v-refuted">No</span> fail-stop (spin+watchdog / exception / fatal)</td><td><span class="badge v-refuted">No</span> Abort / propagated Err; TRNG hang → watchdog</td></tr>
+    <tr><td>FM5 · host-entropy verifiability</td><td><span class="badge v-refuted">Yes</span> HMAC commitment + entropy-check protocol</td><td><span class="badge v-partial">Partial</span> no commitment protocol, but additive-only (safe)</td></tr>
+  </table>
+</section>
+
+<!-- ============================= 3 HYPOTHESES ============================= -->
+<section id="hypotheses">
+  <h2>3 · Hypothesis-driven scan (H1–H9)</h2>
+  <div class="kbd-legend">Verdicts: <span class="badge v-confirmed">Confirmed</span> vulnerability present · <span class="badge v-partial">Partial</span> mitigated with residuals · <span class="badge v-refuted">Refuted</span> defended · ✔ = decisive evidence re-read manually</div>
+
+  <table>
+    <tr><th style="width:36px">#</th><th>Hypothesis</th><th>Trezor Safe 7</th><th>BitBox02</th></tr>
+    <tr><td>H1</td><td>Downgrade to old signed firmware possible</td><td><span class="badge v-refuted">Refuted</span> ✔ (core models)</td><td><span class="badge v-refuted">Refuted</span> ✔ (with edge cases)</td></tr>
+    <tr><td>H2</td><td>Key exfiltration via signature nonces (Dark Skippy)</td><td><span class="badge v-confirmed">Confirmed</span> ✔ no defense</td><td><span class="badge v-partial">Partial</span> ✔ ECDSA defended; taproot gap</td></tr>
+    <tr><td>H3</td><td>PIN/password brute force</td><td><span class="badge v-refuted">Refuted</span></td><td><span class="badge v-refuted">Refuted</span> (weaker on ATECC)</td></tr>
+    <tr><td>H4</td><td>Host hides attacker output as "change"</td><td><span class="badge v-refuted">Refuted</span></td><td><span class="badge v-refuted">Refuted</span> (stronger)</td></tr>
+    <tr><td>H5</td><td>ETH blind-signing exposure</td><td><span class="badge v-partial">Partial</span></td><td><span class="badge v-partial">Partial</span> (worse)</td></tr>
+    <tr><td>H6</td><td>Backup/recovery weaknesses</td><td><span class="badge v-partial">Partial</span> no write-verify</td><td><span class="badge v-confirmed">Confirmed</span> ✔ card alone = seed</td></tr>
+    <tr><td>H7</td><td>Raw RNG exposed (host API / bootloader)</td><td><span class="badge v-confirmed">Confirmed</span> by design</td><td><span class="badge v-refuted">Not a vuln</span> anti-glitch canary</td></tr>
+    <tr><td>H8/H9</td><td>Storage integrity / factory-randomness tampering</td><td><span class="badge v-partial">Partial</span></td><td><span class="badge v-partial">Partial</span></td></tr>
+  </table>
+
+  <h3 id="h1">H1 — Downgrade/rollback: <span class="badge v-refuted">Refuted for both</span></h3>
+  <div class="callout warn"><p><b>Correction:</b> the interim assessment ("no anti-rollback on either device") was wrong. Both implement hard monotonic downgrade protection; this matters precisely because a rollback-to-vulnerable-firmware attack is the exploitation path for entropy bugs like Coldcard's.</p></div>
+  <div class="grid2">
+    <div>
+      <h4>Trezor ✔</h4>
+      <ul>
+        <li>Hard monotonic counters in one-way MCU state (OTP bits on F4; zero-only blocks in secure flash on U5, max 63): <code>bootloader/version_check.c:26-60</code> — separate counters for firmware, bootloader, secmon.</li>
+        <li>Enforced at upload (<code>wf_firmware_update.c:257-261</code>) <i>and at every boot</i> (<code>fw_check.c:97,149</code>; <code>main.c:445-481</code>).</li>
+        <li>Residuals: floors move only when SatoshiLabs bumps <code>FIRMWARE_MONOTONIC_VERSION</code> (currently just 1–2 across models — few historical releases are actually blocked); SEs don't participate; same-monotonic downgrade allowed but wipes storage below <code>fix_version</code>.</li>
+        <li><b>Exception: legacy Trezor One</b> — wipe-only, no blocking (<code>legacy/bootloader/usb.c:188-205</code>).</li>
+      </ul>
+    </div>
+    <div>
+      <h4>BitBox02 ✔</h4>
+      <ul>
+        <li>Monotonic floor in bootdata: <code>bootloader.c:655-658</code> (<code>version_new &lt; stored → ERR_VERSION</code>); version inside the signed preimage (<code>:551-564</code>); bootdata written only by bootloader, MPU-blocked from firmware (<code>mpu_regions.c:88-94</code>); stage1 has its own monotonic (<code>stage0.c:628-635</code>).</li>
+        <li>Flashing does <i>not</i> wipe the seed; entry to bootloader requires on-device confirmation.</li>
+        <li>Residuals: same-version reflash allowed; factory-fresh devices have floor 0 (any historical signed firmware loads); floor resets if bootdata's 2 init bytes are corrupted (<code>bootloader.c:940-946</code>) — fault-injection-grade edge.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>H2 — Nonce exfiltration: <span class="badge v-confirmed">Trezor confirmed</span> / <span class="badge v-partial">BitBox02 partial</span></h3>
+  <div class="grid2">
+    <div>
+      <h4>Trezor ✔ — no anti-exfil defense exists</h4>
+      <ul>
+        <li>Zero anti-exfil/sign-to-contract code anywhere (double-grepped); signing API takes no host-nonce input (<code>crypto/ecdsa.h:98</code>).</li>
+        <li>ECDSA = pure RFC6979, NULL extra data on first attempt (<code>zkp_ecdsa.c:220-232</code>).</li>
+        <li><b>BIP340/Schnorr aux_rand = NULL (zeros) at every call site</b> (<code>modtrezorcrypto-bip340.h:106-108</code>) → taproot signatures fully deterministic.</li>
+        <li><b>No verify-after-sign anywhere</b> — a glitch mid-<code>scalar_multiply</code> could return a key-leaking (r,s) pair unchecked (<code>ecdsa.c:707-773</code>, <code>zkp_ecdsa.c:207-262</code>).</li>
+        <li>Defense rests entirely on supply chain (H1) + reproducible builds — which are strong, but there is no protocol-level tripwire.</li>
+      </ul>
+    </div>
+    <div>
+      <h4>BitBox02 ✔ — real coverage, real gaps</h4>
+      <ul>
+        <li>Anti-klepto primitive verified: host nonce mixed into RFC6979 + signer-commitment round-trip (<code>bitbox-secp256k1/src/lib.rs:129-192</code>); engaged on BTC ECDSA, BTC signmsg, ETH sign/signmsg/EIP-712 whenever the host commits.</li>
+        <li><b>Taproot hard gap:</b> <code>signtx.rs:1210-1213</code> — "Anti-Klepto protocol not supported yet for Schnorr signatures"; host commitment → <code>InvalidInput</code>. Schnorr nonce = device aux_rand only (from the full mix).</li>
+        <li><b>Optional everywhere:</b> host omitting the commitment gets a signature anyway via zero-host-nonce fallback (<code>signtx.rs:1295-1319</code>) or plain RFC6979 (EIP-712). Only hosts that <i>require</i> the commitment round-trip are protected; the reference client does by default.</li>
+        <li>Not covered: Cardano (ed25519, deterministic — limited channel), U2F (secure-chip internal).</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>H3 — Brute force: <span class="badge v-refuted">Refuted for both</span></h3>
+  <ul>
+    <li><b>Trezor:</b> 10 tries (Tropic models incl. Safe 7) / 16, then wipe (<code>storage.h:44-55</code>); counter pre-incremented in flash with verified increment + guard-bit tamper checks (<code>storage.c:1217-1229</code>); exponential backoff <code>2ⁿ−1</code>s; Optiga hardware attempt counter + TROPIC01 mac-and-destroy slots consumed per attempt (<code>tropic.c:1252-1298</code>).</li>
+    <li><b>BitBox02:</b> 10 attempts → full seed wipe (<code>keystore.rs:27,474-513</code>, counted <i>before</i> each attempt). <b>Optiga enforces the cap in-chip</b> (per-attempt counters reset only on correct password). <b>ATECC units weaker:</b> no per-attempt chip counter — cap relies on MCU SmartEEPROM, backstopped by the 730,500-use lifetime KDF budget (<code>atecc.c:64-65,620-621</code>). No MCU-only fallback exists on either device (decryption keys require chip-internal secrets).</li>
+  </ul>
+
+  <h3>H4 — Malicious "change" output: <span class="badge v-refuted">Refuted for both</span></h3>
+  <ul>
+    <li><b>Trezor:</b> change address <b>re-derived from the device seed</b> — host-supplied address discarded (<code>bitcoin.py:966-977</code>); strict script-type/path/multisig-fingerprint matching; everything else + fee confirmed. Residual: multisig config host-supplied each time, shown at GetAddress (all xpubs) but <b>never stored/registered</b> — receive-time defense is out-of-band xpub verification.</li>
+    <li><b>BitBox02 (stronger):</b> change payload computed on-device from keypath only (<code>signtx.rs:911-946</code>); <b>multisig registration mandatory</b> — signing with an unregistered config fails (<code>signtx.rs:439-441</code>); registration confirms every cosigner xpub on-device and stores it (<code>multisig.rs:167-278</code>).</li>
+  </ul>
+
+  <h3>H5 — ETH blind signing: <span class="badge v-partial">Partial for both — BitBox02 worse</span></h3>
+  <ul>
+    <li><b>Trezor:</b> clear-signing engine with vendor-CoSi-signed ERC-7730 definitions; built-in ERC-20 <code>approve</code>/<code>transfer</code> with explicit <b>"unlimited"</b> warning (<code>clear_signing.py:373-395</code>). But <code>setApprovalForAll</code> not built in → blind-signed; unknown calldata = skippable raw hex + keccak digest; &gt;6144 B → no clear signing; EIP-712 structural but field metadata unsigned (host-renameable).</li>
+    <li><b>BitBox02:</b> only ERC-20 <code>transfer</code> decoded (<code>sign.rs:121-145</code>); <code>approve</code>/<code>permit</code>/swaps raw-hex blind-signed with truncation to ~321 chars (<code>ethereum.rs:33-40</code>); token metadata mainnet-only. EIP-712 fully structural (every domain/message member shown) — the one area it leads.</li>
+  </ul>
+
+  <h3>H6 — Backup: <span class="badge v-confirmed">BitBox02 confirmed</span> ✔ / <span class="badge v-partial">Trezor partial</span></h3>
+  <div class="callout crit"><p><b>BitBox02 ✔:</b> plaintext backup (<code>backup.rs:219</code>) + restore requires only a <b>new</b> password, never the original (<code>restore.rs:58-61</code>); backup file kept afterward. <b>The microSD card alone is the seed</b> — anyone holding it (or its files via a compromised PC/card reader) recovers the seed with zero on-device interaction. Deliberate design (nothing extra to forget); must be guarded exactly like a written seed phrase. Card is also flash media — unpowered retention is years, not decades; not an archival medium.</p></div>
+  <p><b>Trezor:</b> no write-then-read-back of the mnemonic during setup (BitBox02 does this and wipes on mismatch); integrity instead via per-entry ChaCha20-Poly1305 AEAD + global HMAC chain, corruption → fault-halt/wipe, not silent degradation (<code>storage.c:1511-1537, 1823-1838</code>).</p>
+
+  <h3>H7 — RNG exposure: <span class="badge v-confirmed">Trezor (by design)</span> / <span class="badge v-refuted">BitBox02 not a vuln</span></h3>
+  <ul>
+    <li><b>Trezor:</b> <code>GetEntropy</code> ships strong-mixed RNG to host after on-device confirmation, ≤1024 B, no rate limit beyond the button press. Surfaced additionally: <b><code>GetNonce</code> returns 32 B of fast RNG with NO confirmation</b> (<code>get_nonce.py:7-15</code>) — THP session use; minor.</li>
+    <li><b>BitBox02:</b> bootloader raw-TRNG bytes are an <b>anti-glitch canary</b> for ECDSA verification (a "verify" that succeeds on random garbage = glitched verify routine → reject), not a challenge-response; a broken canary cannot admit unsigned firmware (<code>bootloader.c:531-543, 603-615</code>). Re-confirms the systemic zero-health-test finding, bootloader included.</li>
+  </ul>
+
+  <h3>H8/H9 — Storage &amp; factory randomness: <span class="badge v-partial">Partial for both</span></h3>
+  <ul>
+    <li><b>BitBox02 storage:</b> verified write-back + encrypt-then-MAC solid; but everything that matters (salt root, encrypted seed) is <b>single-copy in one 8 kB chunk</b> — localized corruption = bricked wallet; HMAC mismatch treated as wrong password → 10-try decryption oracle + forced-wipe DoS for a flash-flipper.</li>
+    <li><b>BitBox02 factory randomness</b> (3rd entropy source, <code>0xDFE0</code>): deliberately unsigned (per-device) but BOOTPROT-fuse + debug-lockout + stage0 preserve-and-verify-on-reinstall mean host/firmware can't change it. Hygiene flags: a <b>fixed dev constant</b> <code>.bin</code> ships in-repo (<code>scripts/bb02-set-factory-randomness.bin</code> — production must never reuse it); power-loss during stage1 reinstall could silently leave it <code>0xFF…</code> (no boot-time detection).</li>
+    <li><b>Trezor attestation:</b> three independent per-device chains — Optiga ECC, TROPIC01 ECC, MCU <b>ML-DSA</b> (post-quantum) — over host challenge; cloning requires invasive per-unit extraction (<code>authenticate_device.py:9-126</code>).</li>
+  </ul>
+</section>
+
+<!-- ============================= 4 SURFACES ============================= -->
+<section id="surfaces">
+  <h2>4 · Additional attack-surface observations</h2>
+  <table>
+    <tr><th>Surface</th><th>Observation</th><th style="width:110px">Severity</th></tr>
+    <tr><td>Counterfeit / pre-initialized devices</td><td>Both have factory attestation verified by the companion app (Trezor: 3-chain incl. ML-DSA; BitBox02: secure-chip attestation). Works only if setup completes through the genuine app; never accept a device arriving with a seed "included".</td><td><span class="sev sev-med">Medium</span></td></tr>
+    <tr><td>Host receive-address swap</td><td>Both display receive addresses on the trusted screen; the entire defense is the user comparing it. Trezor additionally issues an address MAC (SLIP-21) so Suite can verify silent addresses (<code>get_address.py:99-105</code>).</td><td><span class="sev sev-med">Medium</span></td></tr>
+    <tr><td>Physical fault injection</td><td>June 2026 TROPIC01 laser FI (Ledger Donjon) broke 1 of 3 layers; funds safe due to layering. Both designs assume SEs eventually fall. Trezor lacks verify-after-sign (H2) — the main FI-relevant code gap found.</td><td><span class="sev sev-low">Low</span></td></tr>
+    <tr><td>Side channels</td><td>Trezor: ChaCha-DRBG-seeded random delays + consumption masking in-tree. BitBox02: context randomization per sign attempt. Neither audited dynamically here.</td><td><span class="sev sev-info">Info</span></td></tr>
+    <tr><td>Multisig xpub substitution</td><td>BitBox02: mandatory on-device registration (stored). Trezor: config shown at GetAddress but never stored — receive-time verification is out-of-band only.</td><td><span class="sev sev-med">Medium</span></td></tr>
+    <tr><td>Coercion / duress</td><td>Trezor: passphrases (plausible deniability), SLIP39 shares. BitBox02: passphrase only; no trick-PIN concept.</td><td><span class="sev sev-info">Info</span></td></tr>
+  </table>
+</section>
+
+<!-- ============================= 5 MODEL ONE ============================= -->
+<section id="modelone">
+  <h2>5 · Trezor Model One in a multisig setup</h2>
+  <p><b>Verdict: yes — with the right configuration, multisig is the best way to keep a Model One in service.</b> It converts the device's worst single-device weaknesses into 1-of-m failures. Verified legacy specifics and their interaction with multisig:</p>
+  <table>
+    <tr><th>Model One weakness (verified)</th><th>Neutralized by multisig?</th></tr>
+    <tr><td>No secure element → physical extraction (voltage-glitch flash readout publicly demonstrated; modern firmware encrypts storage with a PIN-stretched key, but ≤9-digit PIN is offline-brute-forceable)</td><td><span class="badge v-partial">Mostly</span> attacker gets 1 of m keys. <b>Strong passphrase mandatory</b> — never stored, so extraction yields nothing usable.</td></tr>
+    <tr><td>Single-source entropy (<code>legacy/rng.c</code>: MCU TRNG + repeat-check only, no SE mixing — weakest entropy story reviewed)</td><td><span class="badge v-refuted">Yes</span> a weak T1 key is only 1 of m; the Coldcard attack was practical because it was single-sig.</td></tr>
+    <tr><td>No anti-rollback (old signed firmware flashable; storage wiped but flashable)</td><td><span class="badge v-refuted">Yes</span> worst case yields 1 key; wipe makes it noisy.</td></tr>
+    <tr><td>No anti-exfil, deterministic nonces, no verify-after-sign (shared trezor-crypto path)</td><td><span class="badge v-partial">Partially</span> compromised T1 firmware can exfiltrate <i>its own</i> key (funds still safe) but can also display a fake transaction — fixed only by independent verification on another cosigner.</td></tr>
+    <tr><td>Older codebase; GetAddress shows address only (no cosigner-xpub review like core models)</td><td><span class="badge v-partial">Partially</span> change checks exist (<code>signing.c:1006,1050</code>) but receive verification is weaker than newer devices.</td></tr>
+  </table>
+  <p><b>Multisig does not protect against:</b> receive-address/xpub substitution (verify on ≥2 devices — the T1's small screen shows only the address); correlated quorum compromise (two Model Ones share every weakness; a Trezor-only quorum shares the no-anti-klepto property); backup co-location.</p>
+  <div class="callout good"><p><b>Recommended configuration:</b> 2-of-3 minimum with the T1 as exactly one key; other keys cross-vendor (Safe 7 + BitBox02 are genuinely complementary given the findings above); strong passphrase on the T1 recorded with its backup; T1 as the geographically-separate backup signer, not the daily driver; verify receive addresses on two devices before large deposits; treat any "re-enter your seed" prompt anywhere as an attack.</p></div>
+</section>
+
+<!-- ============================= 6 RECS ============================= -->
+<section id="recs">
+  <h2>6 · Recommendations</h2>
+  <div class="grid2">
+    <div>
+      <h3>For Trezor</h3>
+      <ol>
+        <li><b>Add runtime health tests on SE entropy</b> — extend the Tropic prodtest checks (all-zero/repeat) into a boot-time POST for <i>both</i> Optiga and TROPIC01; consider SP 800-90B continuous tests. (T2)</li>
+        <li><b>Implement an anti-exfiltration signing protocol</b> (host-nonce commitment à la BitBox02 / sign-to-contract) for ECDSA <i>and</i> Schnorr; deterministic nonces alone cannot stop a malicious build. (H2)</li>
+        <li><b>Add verify-after-sign</b> before returning signatures — cheap FI countermeasure. (H2)</li>
+        <li>Route ML-DSA attestation randomness through the mixed path. (T3)</li>
+        <li>Add on-device multisig registration (parity with BitBox02); add read-back verification of the mnemonic at setup; require confirmation for <code>GetNonce</code>. (H4/H6/H7)</li>
+        <li>Add built-in clear-signing for <code>setApprovalForAll</code> / Permit2. (H5)</li>
+      </ol>
+      <h3>For BitBox02</h3>
+      <ol>
+        <li><b>Add SP 800-90B-style startup + continuous health tests on every TRNG</b> — repetition-count / adaptive-proportion on the SAMD51; constant-output detection on the ATECC608B path specifically (erratum history). (B1)</li>
+        <li><b>Close the taproot anti-klepto gap</b>; consider refusing non-anti-klepto ECDSA by default (opt-out instead of silent fallback). (H2)</li>
+        <li>Route Noise keygen through the full mix; make the ATECC-default fallback loud. (B3/B4)</li>
+        <li>Harden storage: redundant copy or ECC for the seed chunk; distinct tamper handling on HMAC mismatch; boot-time <code>0xFF…</code> detection on factory randomness; confirm the dev <code>.bin</code> constant can never reach production. (H8/H9)</li>
+        <li>Decode ERC-20 <code>approve</code> and common drainer calls; reduce blind-hex signing. (H5)</li>
+      </ol>
+    </div>
+    <div>
+      <h3>For users of these devices</h3>
+      <ol>
+        <li><b>Treat the BitBox02 microSD card exactly like a written seed phrase</b> — it <i>is</i> the seed, unencrypted. Consider mnemonic-words backup instead/additionally; never insert the card into a computer.</li>
+        <li>Buy direct from the vendor; complete setup in the official app so attestation is checked; never accept a "pre-set-up" device.</li>
+        <li>Verify every receive address on the device screen; for multisig, on two devices.</li>
+        <li>Use a strong passphrase (Trezor One: mandatory given its extraction history).</li>
+        <li>Keep firmware current — rollback protection on both devices means updates are one-way ratchets for fixed bug classes.</li>
+        <li>Prefer multisig (2-of-3, cross-vendor) for material amounts; it is the architecture that makes every finding in this report survivable.</li>
+        <li>Never type a seed phrase into any website or app; the #1 real-world loss vector remains seed phishing, not firmware bugs.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ============================= 7 LIMITS ============================= -->
+<section id="limits">
+  <h2>7 · Scope &amp; limitations</h2>
+  <ul>
+    <li><b>Source-only review</b> of <code>trezor-firmware@ded1c14</code> (main) and <code>bitbox02-firmware@c838d7f</code> (master), shallow clones taken 1 Aug 2026. Shipped binaries vs. reproducible builds not verified.</li>
+    <li><b>Vendor submodules not checked out</b> and therefore not audited: libtropic (TROPIC01 stack), cryptoauthlib (ATECC), optiga-trust-m, secp256k1-zkp, trezor-storage (legacy). SE-internal TRNG behavior is out of scope.</li>
+    <li>No dynamic testing, no hardware/fault-injection testing, no side-channel measurement. Findings about FI/SC are code-level inferences only.</li>
+    <li>Bootloader paths reviewed at hypothesis depth, not exhaustively. Host-side software (Trezor Suite, BitBoxApp) out of scope except the in-repo reference client.</li>
+    <li>Coldcard incident details are as publicly reported/advised as of 1 Aug 2026; Coinkite's full postmortem was pending at review time.</li>
+    <li>This report was produced with agent-assisted code mapping; <b>every verdict marked ✔ had its decisive evidence re-read manually</b> at the cited file:line.</li>
+  </ul>
+</section>
+
+<!-- ============================= APPENDIX ============================= -->
+<section id="appendix">
+  <h2>Appendix · Key evidence index</h2>
+  <h3>Trezor (trezor-firmware)</h3>
+  <table>
+    <tr><th>Finding</th><th>Evidence</th></tr>
+    <tr><td>Seed entropy origin</td><td class="ev"><code>core/src/apps/management/reset_device/__init__.py:88</code> → <code>random.bytes(32, True)</code>; host mixing <code>:343-356</code>; commitment <code>:92-105</code></td></tr>
+    <tr><td>3-source XOR mixer, fail-closed</td><td class="ev"><code>core/embed/sec/rng/rng_strong.c:38-72</code>; TRNG-only fallback <code>:74-79</code></td></tr>
+    <tr><td>MCU TRNG + FIPS continuous test, fail-stop</td><td class="ev"><code>core/embed/sys/rng/stm32/rng.c:32-85</code></td></tr>
+    <tr><td>Weak PRNG same-symbol pattern + guards</td><td class="ev"><code>crypto/rand_insecure.c:26-50</code>; <code>core/embed/crypto/build.rs:198-203</code>; CHANGELOG #2899</td></tr>
+    <tr><td>No runtime SE health tests (prodtest only)</td><td class="ev"><code>core/embed/projects/prodtest/cmd/prodtest_tropic.c:2206-2256</code></td></tr>
+    <tr><td>Anti-rollback (core models)</td><td class="ev"><code>core/embed/projects/bootloader/version_check.c:26-60</code>; <code>wf_firmware_update.c:257-261</code>; <code>fw_check.c:97,149</code>; <code>monoctr/stm32u5/monoctr.c:84-89</code></td></tr>
+    <tr><td>No anti-exfil; deterministic nonces; NULL aux_rand</td><td class="ev"><code>crypto/zkp_ecdsa.c:220-232</code>; <code>core/embed/upymod/modtrezorcrypto/modtrezorcrypto-bip340.h:106-108</code>; no verify-after-sign <code>crypto/ecdsa.c:707-773</code></td></tr>
+    <tr><td>PIN: 10/16 tries, pre-incremented counter, wipe</td><td class="ev"><code>storage/storage.h:44-55</code>; <code>storage/storage.c:1197-1239</code>; Tropic mac-and-destroy <code>core/embed/sec/tropic/tropic.c:1252-1298</code></td></tr>
+    <tr><td>Change re-derived on-device</td><td class="ev"><code>core/src/apps/bitcoin/sign_tx/bitcoin.py:966-977</code>; <code>change_detector.py:45-68</code></td></tr>
+    <tr><td>ETH clear signing + blind fallback</td><td class="ev"><code>core/src/apps/ethereum/clear_signing.py:373-395</code>; <code>sign_tx.py:188-257</code>; definitions CoSi <code>apps/common/definitions.py:91-95</code></td></tr>
+    <tr><td>GetEntropy / GetNonce exposure</td><td class="ev"><code>core/src/apps/misc/get_entropy.py:7-26</code>; <code>core/src/apps/management/get_nonce.py:7-15</code></td></tr>
+    <tr><td>Attestation (3 chains, ML-DSA)</td><td class="ev"><code>core/src/apps/management/authenticate_device.py:9-126</code></td></tr>
+    <tr><td>Model One: wipe-only downgrade; single-source RNG</td><td class="ev"><code>legacy/bootloader/usb.c:188-205</code>; <code>legacy/rng.c:26-46</code>; legacy change checks <code>legacy/firmware/signing.c:1006,1050</code></td></tr>
+  </table>
+  <h3>BitBox02 (bitbox02-firmware)</h3>
+  <table>
+    <tr><th>Finding</th><th>Evidence</th></tr>
+    <tr><td>5-source seed mix</td><td class="ev"><code>src/rust/bitbox-core-utils/src/random.rs:9-41</code>; <code>keystore.rs:577-608</code>; C equivalent <code>src/random.c:72-92</code></td></tr>
+    <tr><td>Mandatory host entropy</td><td class="ev"><code>src/rust/bitbox02-rust/src/hww/api/set_password.rs:19-38</code></td></tr>
+    <tr><td>Zero health tests; ATECC 5-retry-only</td><td class="ev"><code>src/atecc/atecc.c:684-694</code>; <code>external/asf4-drivers/hpl/trng/hpl_trng.c:100-109</code></td></tr>
+    <tr><td>Plaintext SD backup; restore w/ new password only</td><td class="ev"><code>src/rust/bitbox02-rust/src/backup.rs:219</code>; <code>hww/api/restore.rs:58-61</code></td></tr>
+    <tr><td>Anti-rollback floor</td><td class="ev"><code>src/bootloader/bootloader.c:652-683</code>; bootdata MPU <code>src/bootloader/mpu_regions.c:88-94</code>; stage1 monotonic <code>stage0/stage0.c:628-635</code>; floor-reset edge <code>bootloader.c:940-946</code></td></tr>
+    <tr><td>Anti-klepto coverage + taproot gap</td><td class="ev"><code>src/rust/bitbox-secp256k1/src/lib.rs:129-192</code>; <code>hww/api/bitcoin/signtx.rs:1210-1213</code> (Schnorr unsupported), <code>:1295-1319</code> (zero-nonce fallback)</td></tr>
+    <tr><td>10-attempt cap; Optiga in-chip; ATECC lifetime budget</td><td class="ev"><code>keystore.rs:27,474-513</code>; <code>optiga.h:55-72</code>; <code>atecc.c:64-65,620-621</code></td></tr>
+    <tr><td>Change validation + mandatory multisig registration</td><td class="ev"><code>signtx.rs:911-946,977-995,439-441</code>; <code>multisig.rs:167-278</code></td></tr>
+    <tr><td>ETH blind signing (transfer-only decode; truncation)</td><td class="ev"><code>hww/api/ethereum/sign.rs:121-145,420-466</code>; <code>ethereum.rs:33-40</code></td></tr>
+    <tr><td>Bootloader RNG = anti-glitch canary</td><td class="ev"><code>src/bootloader/bootloader.c:531-543,603-615</code></td></tr>
+    <tr><td>Storage: read-back verify; single-copy chunk</td><td class="ev"><code>keystore.rs:354-367</code>; <code>src/memory/memory.c:83-100</code></td></tr>
+    <tr><td>Factory randomness region + dev constant</td><td class="ev"><code>src/flags.h:35-39</code>; <code>src/random.c:84</code>; <code>scripts/bb02-set-factory-randomness.{jlink,bin}</code>; preserve-verify <code>stage0/stage0.c:482-539</code></td></tr>
+    <tr><td>Noise key single-source; silent ATECC default</td><td class="ev"><code>src/rust/bitbox-noise/src/x25519.rs:22</code>; <code>src/rust/bitbox02/src/securechip/imp.rs:115</code></td></tr>
+  </table>
+</section>
+
+<footer>
+  Hardware Wallet Security Review · 1 August 2026 · trezor-firmware@ded1c14 · bitbox02-firmware@c838d7f<br>
+  Source-level review; not a substitute for dynamic/hardware testing. Coldcard incident data per public advisory at review date.
+</footer>
+
+</div>
+</body>
+</html>
